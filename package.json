@@ -2,11 +2,11 @@
   "name": "veat-back",
   "version": "0.1.0",
   "description": "Backend de l'application V'eat",
-  "main": "dist/index.js",
+  "main": "dist/server.js",
   "scripts": {
     "build": "tsc",
-    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
-    "start": "node dist/index.js",
+    "dev": "ts-node-dev --respawn --transpile-only src/server.ts",
+    "start": "node dist/server.js",
     "lint": "echo \"No linter configured\""
   },
   "keywords": [],
