@@ -1,5 +1,8 @@
 import { Request, Response } from 'express';
+import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
+
+dotenv.config();
 
 const SUPABASE_URL = process.env.SUPABASE_URL || '';
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || '';
@@ -19,11 +22,15 @@ export class AuthController {
         return res.status(400).json({ message: 'first_name et last_name requis' });
       }
 
+      console.log(SUPABASE_URL + "/functions/v1/register");
+
       // Appel à la fonction Edge Supabase
       const response = await fetch(`${SUPABASE_URL}/functions/v1/register`, {
         method: 'POST',
         headers: {
-        'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'apikey': `${SUPABASE_ANON_KEY}`
         },
         body: JSON.stringify({
           email,
@@ -59,7 +66,9 @@ export class AuthController {
       const response = await fetch(`${SUPABASE_URL}/functions/v1/login`, {
         method: 'POST',
         headers: {
-        'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'apikey': `${SUPABASE_ANON_KEY}`
         },
         body: JSON.stringify({
           email,
