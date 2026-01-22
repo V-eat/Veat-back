@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { UserController } from '../controllers/userController';
+import authRouter from './authRoute';
 import { RestaurantController } from '../controllers/restaurantController';
 import { RestaurantHourController } from '../controllers/restaurantHourController';
 import { DishController } from '../controllers/dishController';
@@ -11,7 +11,6 @@ import { FavoriteController } from '../controllers/favoriteController';
 
 const router = Router();
 
-const userController = new UserController();
 const restaurantController = new RestaurantController();
 const restaurantHourController = new RestaurantHourController();
 const dishController = new DishController();
@@ -21,12 +20,8 @@ const orderUserController = new OrderUserController();
 const ratingController = new RatingController();
 const favoriteController = new FavoriteController();
 
-// User routes
-router.get('/users', userController.getAllUsers);
-router.get('/users/:id', userController.getUser);
-router.post('/users', userController.createUser);
-router.put('/users/:id', userController.updateUser);
-router.delete('/users/:id', userController.deleteUser);
+// Auth routes
+router.use('/auth', authRouter);
 
 // Restaurant routes
 router.get('/restaurants', restaurantController.getAllRestaurants);
