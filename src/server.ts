@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import exampleRouter from "./routes/userRoute";
+import router from "./routes";
 
 const app = express();
 
@@ -14,7 +14,7 @@ app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 app.use(express.json());
 
-app.use("/users", exampleRouter);
+app.use("/api", router);
 
 app.get("/", (req, res) => res.json({ message: "Veat-back API" }));
 
