@@ -1,14 +1,23 @@
 import dotenv from "dotenv";
-import { Pool } from "pg";
+import { createClient } from "@supabase/supabase-js";
 
 dotenv.config();
 
-const pool = new Pool({
-  host: process.env.PGHOST || process.env.DB_HOST || "localhost",
-  user: process.env.PGUSER || process.env.DB_USER || process.env.USER,
-  password: process.env.PGPASSWORD || process.env.DB_PASSWORD,
-  database: process.env.PGDATABASE || process.env.DB_NAME,
-  port: process.env.PGPORT ? Number(process.env.PGPORT) : process.env.DB_PORT ? Number(process.env.DB_PORT) : 5432,
-});
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseAnonKey = process.env.SUPABASE_ANON_KEY;
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-export default pool;
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error("Missing Supabase environment variables");
+}
+
+// Client with anon key – used only for auth token validation
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+// Admin client with service role key – bypasses RLS for all DB operations
+export const supabaseAdmin = createClient(
+  supabaseUrl,
+  supabaseServiceRoleKey || supabaseAnonKey // fallback to anon if service key not set
+);
+
+export default supabase;
