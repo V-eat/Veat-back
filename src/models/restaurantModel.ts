@@ -1,4 +1,4 @@
-export type RestaurantStatus = "pending" | "approved" | "rejected";
+export type RestaurantVerificationStatus = "pending" | "approved" | "rejected";
 
 export interface Restaurant {
   id: string;
@@ -17,16 +17,18 @@ export interface Restaurant {
   price_range: number;
   is_active: boolean;
   siret: string | null;
-  kbis_url: string | null;
-  status: RestaurantStatus;
-  rejection_reason: string | null;
+  kbis_document_url: string | null;
+  verification_status: RestaurantVerificationStatus;
+  verification_comment: string | null;
+  verified_at: string | null;
+  verified_by: string | null;
   created_at: string;
   updated_at: string;
 }
 
 export type CreateRestaurantDto = Omit<
   Restaurant,
-  "id" | "created_at" | "updated_at" | "rating" | "review_count"
+  "id" | "created_at" | "updated_at" | "rating" | "review_count" | "verification_status" | "verification_comment" | "verified_at" | "verified_by"
 >;
 
 export type UpdateRestaurantDto = Partial<

@@ -1,5 +1,16 @@
 export type UserRole = "client" | "restaurateur" | "admin";
 
+export interface NotificationPreferences {
+  email_orders: boolean;
+  email_promotions: boolean;
+  email_news: boolean;
+}
+
+export interface ProfileSettings {
+  language: "fr" | "en";
+  theme: "light" | "dark" | "system";
+}
+
 export interface Profile {
   id: string;
   user_id: string;
@@ -11,6 +22,8 @@ export interface Profile {
   avatar_url: string | null;
   allergies: string[];
   preferences: string[];
+  notification_preferences: NotificationPreferences | null;
+  settings: ProfileSettings | null;
   created_at: string;
   updated_at: string;
 }
