@@ -71,9 +71,27 @@ export const createRestaurant = async (req: Request, res: Response) => {
   const owner_id = req.userId!;
 
   try {
+    // Prevent duplicate restaurants per owner
+    const { data: existing } = await supabaseAdmin
+      .from("restaurants")
+      .select("id")
+      .eq("owner_id", owner_id)
+      .maybeSingle();
+
+    if (existing) {
+      return res.status(409).json({ message: "You already have a restaurant registered" });
+    }
+
     const { data, error } = await supabaseAdmin
       .from("restaurants")
-      .insert({ ...body, owner_id, rating: 0, review_count: 0, is_active: true })
+      .insert({
+        ...body,
+        owner_id,
+        rating: 0,
+        review_count: 0,
+        is_active: false,
+        status: "pending",
+      })
       .select()
       .single();
 

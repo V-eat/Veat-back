@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { supabase } from "../db";
+import { supabaseAdmin } from "../db";
 
 // Extend Express Request to carry the authenticated user
 declare global {
@@ -26,7 +26,7 @@ export const authenticate = async (
   }
 
   const token = authHeader.slice(7);
-  const { data: { user }, error } = await supabase.auth.getUser(token);
+  const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
 
   if (error || !user) {
     return res.status(401).json({ message: "Invalid or expired token" });
@@ -49,7 +49,7 @@ export const optionalAuth = async (
   const authHeader = req.headers.authorization;
   if (authHeader?.startsWith("Bearer ")) {
     const token = authHeader.slice(7);
-    const { data: { user } } = await supabase.auth.getUser(token);
+    const { data: { user } } = await supabaseAdmin.auth.getUser(token);
     if (user) {
       req.userId = user.id;
       req.userEmail = user.email;

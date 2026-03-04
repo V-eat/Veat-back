@@ -1,3 +1,5 @@
+export type RestaurantStatus = "pending" | "approved" | "rejected";
+
 export interface Restaurant {
   id: string;
   owner_id: string;
@@ -14,6 +16,10 @@ export interface Restaurant {
   review_count: number;
   price_range: number;
   is_active: boolean;
+  siret: string | null;
+  kbis_url: string | null;
+  status: RestaurantStatus;
+  rejection_reason: string | null;
   created_at: string;
   updated_at: string;
 }

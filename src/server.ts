@@ -12,6 +12,7 @@ import orderRouter from "./routes/orderRoute";
 import reviewRouter, { restaurantReviewRouter } from "./routes/reviewRoute";
 import favoriteRouter from "./routes/favoriteRoute";
 import profileRouter from "./routes/profileRoute";
+import adminRouter from "./routes/adminRoute";
 
 const app = express();
 
@@ -54,6 +55,7 @@ app.use("/menu-items", standaloneMenuItemRouter);
 app.use("/orders", orderRouter);
 app.use("/reviews", reviewRouter);
 app.use("/favorites", favoriteRouter);
+app.use("/admin", adminRouter);
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
 

@@ -1,9 +1,12 @@
+export type UserRole = "client" | "restaurateur" | "admin";
+
 export interface Profile {
   id: string;
   user_id: string;
   first_name: string;
   last_name: string;
   email: string;
+  role: UserRole;
   date_of_birth: string | null;
   avatar_url: string | null;
   allergies: string[];
