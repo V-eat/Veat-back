@@ -67,6 +67,11 @@ app.use("/tables", tableRouter);
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
 
-app.listen(PORT, () => {
-  console.log(`V'EAT API listening on http://localhost:${PORT}`);
-});
+// Local only
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`V'EAT API listening on http://localhost:${PORT}`);
+  });
+}
+
+export default app;
