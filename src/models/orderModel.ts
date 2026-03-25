@@ -26,6 +26,7 @@ export interface Order {
   is_rushed: boolean;
   special_instructions: string | null;
   table_id?: string | null;
+  released_to_restaurant?: boolean;
   created_at: string;
   updated_at: string;
 }

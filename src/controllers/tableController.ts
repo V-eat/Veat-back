@@ -148,6 +148,41 @@ export const closeTable = async (req: Request, res: Response) => {
   }
 };
 
+export const updateTableArrivalTime = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { arrival_time } = req.body as { arrival_time?: string };
+
+  if (!arrival_time) {
+    return res.status(400).json({ message: "arrival_time is required" });
+  }
+
+  try {
+    const { data: table } = await supabaseAdmin
+      .from("virtual_tables")
+      .select("host_user_id")
+      .eq("id", id)
+      .single();
+
+    if (!table) return res.status(404).json({ message: "Table not found" });
+    if (table.host_user_id !== req.userId) {
+      return res.status(403).json({ message: "Only the host can set arrival time" });
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from("virtual_tables")
+      .update({ arrival_time })
+      .eq("id", id)
+      .select("*")
+      .single();
+
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Database error" });
+  }
+};
+
 export const leaveTable = async (req: Request, res: Response) => {
   const { id } = req.params;
 

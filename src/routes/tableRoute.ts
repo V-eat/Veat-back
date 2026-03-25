@@ -1,5 +1,13 @@
 import { Router } from "express";
-import { createTable, joinTable, getTable, closeTable, leaveTable, getTableByCode } from "../controllers/tableController";
+import {
+	createTable,
+	joinTable,
+	getTable,
+	closeTable,
+	leaveTable,
+	getTableByCode,
+	updateTableArrivalTime,
+} from "../controllers/tableController";
 import { authenticate } from "../middleware/auth.middleware";
 
 const router = Router();
@@ -8,6 +16,7 @@ router.post("/", authenticate, createTable);
 router.post("/join", authenticate, joinTable);
 router.get("/code/:code", authenticate, getTableByCode);
 router.get("/:id", authenticate, getTable);
+router.patch("/:id/arrival-time", authenticate, updateTableArrivalTime);
 router.patch("/:id/close", authenticate, closeTable);
 router.delete("/:id/leave", authenticate, leaveTable);
 
