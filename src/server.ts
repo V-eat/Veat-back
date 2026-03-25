@@ -13,6 +13,8 @@ import reviewRouter, { restaurantReviewRouter } from "./routes/reviewRoute";
 import favoriteRouter from "./routes/favoriteRoute";
 import profileRouter from "./routes/profileRoute";
 import adminRouter from "./routes/adminRoute";
+import stripeRouter from "./routes/stripeRoute";
+import tableRouter from "./routes/tableRoute";
 
 const app = express();
 
@@ -24,6 +26,10 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
+
+// Stripe webhook needs raw body — must be registered before express.json()
+app.use('/stripe/webhook', express.raw({ type: 'application/json' }));
+
 app.use(express.json());
 
 // Root
@@ -56,6 +62,8 @@ app.use("/orders", orderRouter);
 app.use("/reviews", reviewRouter);
 app.use("/favorites", favoriteRouter);
 app.use("/admin", adminRouter);
+app.use("/stripe", stripeRouter);
+app.use("/tables", tableRouter);
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
 

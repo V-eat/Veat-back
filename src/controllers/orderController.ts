@@ -36,7 +36,7 @@ export const getRestaurantOrders = async (req: Request, res: Response) => {
 
     const { data, error } = await supabaseAdmin
       .from("orders")
-      .select("*")
+      .select("*, virtual_tables(id, join_code, table_number)")
       .eq("restaurant_id", restaurantId)
       .order("created_at", { ascending: false });
 
@@ -98,6 +98,7 @@ export const createOrder = async (req: Request, res: Response) => {
         table_number: body.table_number ?? null,
         is_rushed: body.is_rushed ?? false,
         special_instructions: body.special_instructions ?? null,
+        table_id: body.table_id ?? null,
         status: "pending",
       })
       .select()
