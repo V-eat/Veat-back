@@ -2,6 +2,37 @@ import { Request, Response } from "express";
 import { supabaseAdmin } from "../db";
 import { CreateRestaurantDto, UpdateRestaurantDto } from "../models/restaurantModel";
 
+const BUCKET = "restaurant-images";
+
+async function resolveImageUrl(restaurantId: string, existingUrl: string | null): Promise<string | null> {
+  if (existingUrl) return existingUrl;
+  try {
+    const { data: files } = await supabaseAdmin.storage
+      .from(BUCKET)
+      .list(restaurantId, { limit: 1, sortBy: { column: "created_at", order: "desc" } });
+    if (files && files.length > 0) {
+      const { data } = supabaseAdmin.storage
+        .from(BUCKET)
+        .getPublicUrl(`${restaurantId}/${files[0].name}`);
+      return data.publicUrl;
+    }
+  } catch {
+    // Storage not configured or bucket missing – silently ignore
+  }
+  return null;
+}
+
+async function enrichWithImageUrl<T extends { id: string; image_url: string | null }>(
+  rows: T[]
+): Promise<T[]> {
+  return Promise.all(
+    rows.map(async (row) => {
+      const image_url = await resolveImageUrl(row.id, row.image_url);
+      return { ...row, image_url };
+    })
+  );
+}
+
 export const getRestaurants = async (req: Request, res: Response) => {
   try {
     let query = supabaseAdmin
@@ -22,7 +53,7 @@ export const getRestaurants = async (req: Request, res: Response) => {
 
     const { data, error } = await query;
     if (error) throw error;
-    res.json(data);
+    res.json(await enrichWithImageUrl(data ?? []));
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Database error" });
@@ -42,7 +73,8 @@ export const getRestaurantById = async (req: Request, res: Response) => {
       if (error.code === "PGRST116") return res.status(404).json({ message: "Not found" });
       throw error;
     }
-    res.json(data);
+    const image_url = await resolveImageUrl(data.id, data.image_url);
+    res.json({ ...data, image_url });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Database error" });
@@ -59,7 +91,7 @@ export const getRestaurantsByOwner = async (req: Request, res: Response) => {
       .order("created_at", { ascending: false });
 
     if (error) throw error;
-    res.json(data);
+    res.json(await enrichWithImageUrl(data ?? []));
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Database error" });
