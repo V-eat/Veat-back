@@ -1,10 +1,11 @@
 export interface User {
   user_id: number;
-  last_name?: string;
-  first_name?: string;
+  last_name?: string | null;
+  first_name?: string | null;
   email: string;
-  birthdate: Date;
+  phone?: string | null;
   password: string;
+  language?: string | null;
   created_at?: string;
   email_notifications?: boolean;
   sms_notifications?: boolean;

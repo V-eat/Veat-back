@@ -1,123 +1,196 @@
-import { Request, Response } from 'express';
-import pool from '../db';
-import { Restaurant } from '../models/restaurantModel';
+import { Request, Response } from "express";
+import { supabaseAdmin } from "../db";
+import { CreateRestaurantDto, UpdateRestaurantDto } from "../models/restaurantModel";
 
-export class RestaurantController {
-  
-  public getAllRestaurants = async (req: Request, res: Response) => {
-    const client = await pool.connect();
-    try {
-      const result = await client.query<Restaurant>(`SELECT * FROM restaurants ORDER BY restaurant_id`);
-      res.json(result.rows);
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ message: 'Database error' });
-    } finally {
-      client.release();
+const BUCKET = "restaurant-images";
+
+async function resolveImageUrl(restaurantId: string, existingUrl: string | null): Promise<string | null> {
+  if (existingUrl) return existingUrl;
+  try {
+    const { data: files } = await supabaseAdmin.storage
+      .from(BUCKET)
+      .list(restaurantId, { limit: 1, sortBy: { column: "created_at", order: "desc" } });
+    if (files && files.length > 0) {
+      const { data } = supabaseAdmin.storage
+        .from(BUCKET)
+        .getPublicUrl(`${restaurantId}/${files[0].name}`);
+      return data.publicUrl;
     }
-  };
-
-  public getRestaurant = async (req: Request, res: Response) => {
-    const id = Number(req.params.id);
-    if (!id) return res.status(400).json({ message: 'Invalid id' });
-    const client = await pool.connect();
-
-    try {
-      const result = await client.query<Restaurant>(`SELECT * FROM restaurants WHERE restaurant_id = $1`, [id]);
-      if (result.rowCount === 0) return res.status(404).json({ message: 'Not found' });
-      res.json(result.rows[0]);
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ message: 'Database error' });
-    } finally {
-      client.release();
-    }
-  };
-
-  public createRestaurant = async (req: Request, res: Response) => {
-    const {
-      owner_id,
-      name,
-      email,
-      phone,
-      description,
-      adresse,
-      latitude,
-      longitude,
-      cuisine_type,
-      preparation_time,
-      commission_rate,
-    } = req.body as Partial<Restaurant>;
-
-    if (!owner_id || !name || !email) {
-      return res.status(400).json({ message: "'owner_id', 'name' and 'email' are required" });
-    }
-
-    const client = await pool.connect();
-    try {
-      const result = await client.query<Restaurant>(
-        `INSERT INTO restaurants(owner_id, name, email, phone, description, adresse, latitude, longitude, cuisine_type, preparation_time, commission_rate)
-        VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
-        [owner_id, name, email, phone, description, adresse, latitude, longitude, cuisine_type, preparation_time, commission_rate]
-      );
-      res.status(201).json(result.rows[0]);
-    } catch (err: any) {
-      console.error(err);
-      if (err.code === '23505') {
-        return res.status(409).json({ message: 'Email already exists' });
-      }
-      res.status(500).json({ message: 'Database error' });
-    } finally {
-      client.release();
-    }
-  };
-
-  public updateRestaurant = async (req: Request, res: Response) => {
-    const id = Number(req.params.id);
-    if (!id) return res.status(400).json({ message: 'Invalid id' });
-
-    const allowed: Partial<Restaurant> = req.body;
-    const fields: string[] = [];
-    const values: any[] = [];
-    let idx = 1;
-
-    for (const [key, value] of Object.entries(allowed)) {
-      if (key === 'restaurant_id' || value === undefined) continue;
-      fields.push(`${key} = $${idx}`);
-      values.push(value);
-      idx++;
-    }
-    if (fields.length === 0) return res.status(400).json({ message: 'No fields to update' });
-
-    const client = await pool.connect();
-    try {
-      const q = `UPDATE restaurants SET ${fields.join(', ')} WHERE restaurant_id = $${idx} RETURNING *`;
-      values.push(id);
-      const result = await client.query<Restaurant>(q, values);
-      if (result.rowCount === 0) return res.status(404).json({ message: 'Not found' });
-      res.json(result.rows[0]);
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ message: 'Database error' });
-    } finally {
-      client.release();
-    }
-  };
-
-  public deleteRestaurant = async (req: Request, res: Response) => {
-    const id = Number(req.params.id);
-    if (!id) return res.status(400).json({ message: 'Invalid id' });
-    const client = await pool.connect();
-
-    try {
-      const result = await client.query(`DELETE FROM restaurants WHERE restaurant_id = $1`, [id]);
-      if (result.rowCount === 0) return res.status(404).json({ message: 'Not found' });
-      res.status(204).send();
-    } catch (err) {
-      console.error(err);
-      res.status(500).json({ message: 'Database error' });
-    } finally {
-      client.release();
-    }
-  };
+  } catch {
+    // Storage not configured or bucket missing – silently ignore
+  }
+  return null;
 }
+
+async function enrichWithImageUrl<T extends { id: string; image_url: string | null }>(
+  rows: T[]
+): Promise<T[]> {
+  return Promise.all(
+    rows.map(async (row) => {
+      const image_url = await resolveImageUrl(row.id, row.image_url);
+      return { ...row, image_url };
+    })
+  );
+}
+
+export const getRestaurants = async (req: Request, res: Response) => {
+  try {
+    let query = supabaseAdmin
+      .from("restaurants")
+      .select("*")
+      .eq("is_active", true)
+      .order("rating", { ascending: false });
+
+    if (req.query.cuisine_type) {
+      query = query.eq("cuisine_type", req.query.cuisine_type as string);
+    }
+    if (req.query.price_range) {
+      query = query.eq("price_range", Number(req.query.price_range));
+    }
+    if (req.query.search) {
+      query = query.ilike("name", `%${req.query.search}%`);
+    }
+
+    const { data, error } = await query;
+    if (error) throw error;
+    res.json(await enrichWithImageUrl(data ?? []));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Database error" });
+  }
+};
+
+export const getRestaurantById = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("restaurants")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (error) {
+      if (error.code === "PGRST116") return res.status(404).json({ message: "Not found" });
+      throw error;
+    }
+    const image_url = await resolveImageUrl(data.id, data.image_url);
+    res.json({ ...data, image_url });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Database error" });
+  }
+};
+
+export const getRestaurantsByOwner = async (req: Request, res: Response) => {
+  const ownerId = req.params.ownerId || req.userId;
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("restaurants")
+      .select("*")
+      .eq("owner_id", ownerId)
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+    res.json(await enrichWithImageUrl(data ?? []));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Database error" });
+  }
+};
+
+export const createRestaurant = async (req: Request, res: Response) => {
+  const body = req.body as CreateRestaurantDto;
+  const owner_id = req.userId!;
+
+  try {
+    // Prevent duplicate restaurants per owner
+    const { data: existing } = await supabaseAdmin
+      .from("restaurants")
+      .select("id")
+      .eq("owner_id", owner_id)
+      .maybeSingle();
+
+    if (existing) {
+      return res.status(409).json({ message: "You already have a restaurant registered" });
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from("restaurants")
+      .insert({
+        ...body,
+        owner_id,
+        rating: 0,
+        review_count: 0,
+        is_active: false,
+        status: "pending",
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.status(201).json(data);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Database error" });
+  }
+};
+
+export const updateRestaurant = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const updates = req.body as UpdateRestaurantDto;
+
+  try {
+    // Verify ownership
+    const { data: existing } = await supabaseAdmin
+      .from("restaurants")
+      .select("owner_id")
+      .eq("id", id)
+      .single();
+
+    if (!existing) return res.status(404).json({ message: "Not found" });
+    if (existing.owner_id !== req.userId) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from("restaurants")
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.json(data);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Database error" });
+  }
+};
+
+export const deleteRestaurant = async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  try {
+    const { data: existing } = await supabaseAdmin
+      .from("restaurants")
+      .select("owner_id")
+      .eq("id", id)
+      .single();
+
+    if (!existing) return res.status(404).json({ message: "Not found" });
+    if (existing.owner_id !== req.userId) {
+      return res.status(403).json({ message: "Forbidden" });
+    }
+
+    const { error } = await supabaseAdmin
+      .from("restaurants")
+      .update({ is_active: false })
+      .eq("id", id);
+
+    if (error) throw error;
+    res.status(204).send();
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Database error" });
+  }
+};

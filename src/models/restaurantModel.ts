@@ -1,22 +1,36 @@
-import { User } from '../models/userModel';
+export type RestaurantVerificationStatus = "pending" | "approved" | "rejected";
 
 export interface Restaurant {
-    restaurant_id: number;
-    owner_id: string;
-    name: string;
-    email: string;
-    phone?: string;
-    description?: string;
-    adresse?: string;
-    latitude?: number;
-    longitude?: number;
-    rating_average?: number;
-    cuisine_type?: string;
-    is_open?: boolean;
-    preparation_time?: number;
-    commission_rate?: number;
-    stripe_account_id?: string;
-    is_onboarded?: boolean;
-    created_at?: Date;
-    photo_url?: string;
+  id: string;
+  owner_id: string;
+  name: string;
+  description: string | null;
+  image_url: string | null;
+  cuisine_type: string | null;
+  email: string;
+  phone: string;
+  address: string;
+  opening_hours: Record<string, { open: string; close: string; isClosed?: boolean }>;
+  preparation_time: number;
+  rating: number;
+  review_count: number;
+  price_range: number;
+  is_active: boolean;
+  siret: string | null;
+  kbis_document_url: string | null;
+  verification_status: RestaurantVerificationStatus;
+  verification_comment: string | null;
+  verified_at: string | null;
+  verified_by: string | null;
+  created_at: string;
+  updated_at: string;
 }
+
+export type CreateRestaurantDto = Omit<
+  Restaurant,
+  "id" | "created_at" | "updated_at" | "rating" | "review_count" | "verification_status" | "verification_comment" | "verified_at" | "verified_by"
+>;
+
+export type UpdateRestaurantDto = Partial<
+  Omit<Restaurant, "id" | "owner_id" | "created_at" | "updated_at">
+>;
