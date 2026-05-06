@@ -2,6 +2,22 @@ import { Request, Response } from "express";
 import { supabaseAdmin } from "../db";
 import { CreateReviewDto, UpdateReviewDto } from "../models/reviewModel";
 
+export const getMyReviews = async (req: Request, res: Response) => {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("reviews")
+      .select("*")
+      .eq("user_id", req.userId)
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+    res.json(data ?? []);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Database error" });
+  }
+};
+
 export const getRestaurantReviews = async (req: Request, res: Response) => {
   const { restaurantId } = req.params;
 
@@ -44,8 +60,33 @@ export const createReview = async (req: Request, res: Response) => {
   }
 
   try {
-    // Check user has a completed order at this restaurant
-    // (optional business rule – remove if not needed)
+    const { data: completedOrder, error: completedOrderError } = await supabaseAdmin
+      .from("orders")
+      .select("id")
+      .eq("user_id", req.userId)
+      .eq("restaurant_id", restaurantId)
+      .eq("status", "completed")
+      .limit(1)
+      .maybeSingle();
+
+    if (completedOrderError) throw completedOrderError;
+    if (!completedOrder) {
+      return res.status(403).json({ message: "Vous devez avoir une commande terminee pour laisser un avis." });
+    }
+
+    const { data: existingReview, error: existingReviewError } = await supabaseAdmin
+      .from("reviews")
+      .select("id")
+      .eq("user_id", req.userId)
+      .eq("restaurant_id", restaurantId)
+      .limit(1)
+      .maybeSingle();
+
+    if (existingReviewError) throw existingReviewError;
+    if (existingReview) {
+      return res.status(409).json({ message: "Vous avez deja note ce restaurant." });
+    }
+
     const { data, error } = await supabaseAdmin
       .from("reviews")
       .insert({

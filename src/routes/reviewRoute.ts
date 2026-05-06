@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  getMyReviews,
   getRestaurantReviews,
   createReview,
   updateReview,
@@ -14,6 +15,7 @@ restaurantReviewRouter.post("/", authenticate, createReview);
 
 // Standalone /reviews/:id
 const router = Router();
+router.get("/me", authenticate, getMyReviews);
 router.put("/:id", authenticate, updateReview);
 router.delete("/:id", authenticate, deleteReview);
 
