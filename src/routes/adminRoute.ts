@@ -11,6 +11,10 @@ import {
   getAdminOrders,
   getAdminReviews,
   deleteAdminReview,
+  getAdminPromotions,
+  createAdminPromotion,
+  updateAdminPromotion,
+  deleteAdminPromotion,
 } from "../controllers/adminController";
 
 const router = Router();
@@ -31,5 +35,10 @@ router.get("/orders", getAdminOrders);
 
 router.get("/reviews", getAdminReviews);
 router.delete("/reviews/:id", deleteAdminReview);
+
+router.get("/promotions", getAdminPromotions);
+router.post("/promotions", createAdminPromotion);
+router.put("/promotions/:id", updateAdminPromotion);
+router.delete("/promotions/:id", deleteAdminPromotion);
 
 export default router;

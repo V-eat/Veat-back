@@ -86,8 +86,24 @@ export const getOrderById = async (req: Request, res: Response) => {
 
 export const createOrder = async (req: Request, res: Response) => {
   const body = req.body as CreateOrderDto;
+  const promotionId = (req.body as any).promotion_id as string | undefined;
+  const promotionCode = (req.body as any).promotion_code as string | undefined;
+  const loyaltyPointsUsed = Math.max(0, Number((req.body as any).loyalty_points_used ?? 0));
+  const loyaltyDiscountAmount = Math.max(0, Number((req.body as any).loyalty_discount_amount ?? 0));
 
   try {
+    if (loyaltyPointsUsed > 0) {
+      const { data: ledgerRows, error: ledgerError } = await supabaseAdmin
+        .from("loyalty_transactions")
+        .select("points")
+        .eq("user_id", req.userId);
+      if (ledgerError) throw ledgerError;
+      const availablePoints = (ledgerRows ?? []).reduce((sum: number, row: any) => sum + Number(row.points || 0), 0);
+      if (loyaltyPointsUsed > availablePoints) {
+        return res.status(400).json({ message: "Points fidélité insuffisants" });
+      }
+    }
+
     let arrivalTime = body.arrival_time;
     let releasedToRestaurant = true;
 
@@ -144,6 +160,32 @@ export const createOrder = async (req: Request, res: Response) => {
 
     if (error) throw error;
 
+    if (promotionId) {
+      await supabaseAdmin
+        .from("promotion_redemptions")
+        .insert({
+          promotion_id: promotionId,
+          user_id: req.userId,
+          order_id: data.id,
+          code: promotionCode?.toUpperCase?.() || null,
+          discount_amount: Math.max(0, Number((body as any).discount_amount ?? 0)),
+        });
+    }
+
+    if (loyaltyPointsUsed > 0) {
+      const { error: loyaltySpendError } = await supabaseAdmin
+        .from("loyalty_transactions")
+        .insert({
+          user_id: req.userId,
+          order_id: data.id,
+          type: "spend",
+          points: -loyaltyPointsUsed,
+          reason: "Loyalty points used at checkout",
+          amount_eur: loyaltyDiscountAmount,
+        });
+      if (loyaltySpendError) throw loyaltySpendError;
+    }
+
     if (body.table_id) {
       const { data: members } = await supabaseAdmin
         .from("table_members")
@@ -192,7 +234,7 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
     // Find the order and verify the restaurant owner can update it
     const { data: order } = await supabaseAdmin
       .from("orders")
-      .select("restaurant_id, user_id")
+      .select("id, restaurant_id, user_id, status, total_amount, is_rushed")
       .eq("id", id)
       .single();
 
@@ -216,6 +258,32 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
       .single();
 
     if (error) throw error;
+
+    if (order.status !== "completed" && status === "completed") {
+      const { data: existingEarn } = await supabaseAdmin
+        .from("loyalty_transactions")
+        .select("id")
+        .eq("order_id", order.id)
+        .eq("type", "earn")
+        .maybeSingle();
+
+      if (!existingEarn) {
+        const earnedPoints = Math.floor(Number(order.total_amount || 0) / 2) + (order.is_rushed ? 20 : 0);
+        if (earnedPoints > 0) {
+          const { error: earnError } = await supabaseAdmin
+            .from("loyalty_transactions")
+            .insert({
+              user_id: order.user_id,
+              order_id: order.id,
+              type: "earn",
+              points: earnedPoints,
+              reason: "Completed order loyalty gain",
+              amount_eur: Number(order.total_amount || 0),
+            });
+          if (earnError) throw earnError;
+        }
+      }
+    }
     res.json(data);
   } catch (err) {
     console.error(err);
