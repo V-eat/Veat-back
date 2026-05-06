@@ -264,3 +264,130 @@ export const deleteAdminReview = async (req: Request, res: Response) => {
     res.status(500).json({ message: "Database error" });
   }
 };
+
+// ─── Promotions ────────────────────────────────────────────────────────────────
+
+export const getAdminPromotions = async (_req: Request, res: Response) => {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("promo_campaigns")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (error) throw error;
+    res.json(data ?? []);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Database error" });
+  }
+};
+
+export const createAdminPromotion = async (req: Request, res: Response) => {
+  const {
+    title,
+    description,
+    code,
+    scope,
+    restaurant_id,
+    discount_percent,
+    starts_at,
+    expires_at,
+    min_order_amount,
+    is_active,
+  } = req.body as {
+    title: string;
+    description?: string;
+    code: string;
+    scope: "global" | "restaurant";
+    restaurant_id?: string | null;
+    discount_percent: number;
+    starts_at?: string | null;
+    expires_at: string;
+    min_order_amount?: number | null;
+    is_active?: boolean;
+  };
+
+  if (!title?.trim() || !code?.trim() || !expires_at || !discount_percent) {
+    return res.status(400).json({ message: "Missing required fields" });
+  }
+  if (discount_percent <= 0 || discount_percent > 100) {
+    return res.status(400).json({ message: "discount_percent must be between 1 and 100" });
+  }
+  if (scope === "restaurant" && !restaurant_id) {
+    return res.status(400).json({ message: "restaurant_id is required for restaurant scope" });
+  }
+
+  try {
+    const payload = {
+      title: title.trim(),
+      description: description?.trim() || null,
+      code: code.trim().toUpperCase(),
+      scope,
+      restaurant_id: scope === "restaurant" ? restaurant_id : null,
+      discount_percent,
+      starts_at: starts_at || null,
+      expires_at,
+      min_order_amount: min_order_amount ?? null,
+      is_active: is_active ?? true,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { data, error } = await supabaseAdmin
+      .from("promo_campaigns")
+      .insert(payload)
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.status(201).json(data);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Database error" });
+  }
+};
+
+export const updateAdminPromotion = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const updates = req.body as Record<string, any>;
+
+  if (!id) return res.status(400).json({ message: "Missing id" });
+
+  try {
+    const patch: Record<string, any> = {
+      ...updates,
+      updated_at: new Date().toISOString(),
+    };
+    if (typeof patch.code === "string") {
+      patch.code = patch.code.trim().toUpperCase();
+    }
+
+    const { data, error } = await supabaseAdmin
+      .from("promo_campaigns")
+      .update(patch)
+      .eq("id", id)
+      .select()
+      .single();
+
+    if (error) {
+      if (error.code === "PGRST116") return res.status(404).json({ message: "Promotion not found" });
+      throw error;
+    }
+    res.json(data);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Database error" });
+  }
+};
+
+export const deleteAdminPromotion = async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  try {
+    const { error } = await supabaseAdmin.from("promo_campaigns").delete().eq("id", id);
+    if (error) throw error;
+    res.status(204).send();
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Database error" });
+  }
+};

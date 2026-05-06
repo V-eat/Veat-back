@@ -15,6 +15,7 @@ import profileRouter from "./routes/profileRoute";
 import adminRouter from "./routes/adminRoute";
 import stripeRouter from "./routes/stripeRoute";
 import tableRouter from "./routes/tableRoute";
+import engagementRouter from "./routes/engagementRoute";
 
 const app = express();
 
@@ -64,6 +65,7 @@ app.use("/favorites", favoriteRouter);
 app.use("/admin", adminRouter);
 app.use("/stripe", stripeRouter);
 app.use("/tables", tableRouter);
+app.use("/engagement", engagementRouter);
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
 
